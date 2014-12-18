@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"io"
 	"io/ioutil"
 	"log"
@@ -11,6 +12,13 @@ import (
 )
 
 var _ = log.Print
+
+var (
+	ErrStatusConflict            error = errors.New(fmt.Sprintf("%d: Conflict", http.StatusConflict))
+	ErrStatusBadRequest          error = errors.New(fmt.Sprintf("%d: Bad Request", http.StatusBadRequest))
+	ErrStatusInternalServerError error = errors.New(fmt.Sprintf("%d: Internal Server Error", http.StatusInternalServerError))
+	ErrStatusNotFound            error = errors.New(fmt.Sprintf("%d: Not Found", http.StatusNotFound))
+)
 
 func MakeRequest(method string, url string, entity interface{}) (*http.Response, error) {
 	req, err := buildRequest(method, url, entity)
@@ -72,7 +80,20 @@ func ProcessResponseEntity(r *http.Response, entity interface{}, expectedStatus 
 }
 func processResponse(r *http.Response, expectedStatus int) error {
 	if r.StatusCode != expectedStatus {
-		return errors.New("response status of " + r.Status)
+
+		switch r.StatusCode {
+		case http.StatusConflict:
+			return ErrStatusConflict
+		case http.StatusBadRequest:
+			return ErrStatusBadRequest
+		case http.StatusInternalServerError:
+			return ErrStatusInternalServerError
+		case http.StatusNotFound:
+			return ErrStatusNotFound
+		default:
+			return errors.New("response status of " + r.Status)
+		}
+
 	}
 
 	return nil
