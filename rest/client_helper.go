@@ -38,7 +38,8 @@ func buildRequest(method string, url string, entity interface{}) (*http.Request,
 	if err != nil {
 		return req, err
 	}
-	req.Header.Set("content-type", "application/json")
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("Accept", "application/json")
 	return req, err
 }
 
