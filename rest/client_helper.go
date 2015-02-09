@@ -20,15 +20,24 @@ var (
 	ErrStatusNotFound            error = errors.New(fmt.Sprintf("%d: Not Found", http.StatusNotFound))
 )
 
-func MakeRequest(method string, url string, entity interface{}) (*http.Response, error) {
-	req, err := buildRequest(method, url, entity)
+func NewRequestH(method string, url string, headers map[string]interface{}, entity interface{}) (*http.Response, error) {
+	req, err := buildRequest(method, url, headers, entity)
 	if err != nil {
 		return nil, err
 	}
 	return http.DefaultClient.Do(req)
 }
 
-func buildRequest(method string, url string, entity interface{}) (*http.Request, error) {
+func MakeRequest(method string, url string, entity interface{}) (*http.Response, error) {
+	headers := map[string]interface{}{}
+	req, err := buildRequest(method, url, headers, entity)
+	if err != nil {
+		return nil, err
+	}
+	return http.DefaultClient.Do(req)
+}
+
+func buildRequest(method string, url string, headers map[string]interface{}, entity interface{}) (*http.Request, error) {
 	body, err := encodeEntity(entity)
 	if err != nil {
 		return nil, err
@@ -38,8 +47,18 @@ func buildRequest(method string, url string, entity interface{}) (*http.Request,
 	if err != nil {
 		return req, err
 	}
-	req.Header.Set("Content-Type", "application/json")
-	req.Header.Set("Accept", "application/json")
+
+	headers["Content-Type"] = "application/json"
+	headers["Accept"] = "application/json"
+
+	for header, value := range headers {
+		switch value.(type) {
+		case int:
+			req.Header.Set(header, string(value.(int)))
+		case string:
+			req.Header.Set(header, value.(string))
+		}
+	}
 	return req, err
 }
 
