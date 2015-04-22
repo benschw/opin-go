@@ -1,7 +1,6 @@
 package ophttp
 
 import (
-	"github.com/hydrogen18/stoppableListener"
 	"log"
 	"net"
 	"net/http"
@@ -9,12 +8,32 @@ import (
 	"os/signal"
 	"sync"
 	"syscall"
+
+	"github.com/hydrogen18/stoppableListener"
 )
 
 // http server gracefull exit on SIGINT
 func StartServer(bind string) error {
+	s := NewServer(bind)
+	return s.Start()
+}
 
-	originalListener, err := net.Listen("tcp", bind)
+func NewServer(bind string) *Server {
+	return &Server{
+		Bind:     bind,
+		StopChan: make(chan os.Signal),
+	}
+}
+
+type Server struct {
+	Bind     string
+	StopChan chan os.Signal
+}
+
+// http server gracefull exit on SIGINT
+func (s *Server) Start() error {
+
+	originalListener, err := net.Listen("tcp", s.Bind)
 	if err != nil {
 		return err
 	}
@@ -26,8 +45,7 @@ func StartServer(bind string) error {
 
 	server := http.Server{}
 
-	stopChan := make(chan os.Signal)
-	signal.Notify(stopChan, syscall.SIGINT)
+	signal.Notify(s.StopChan, syscall.SIGINT)
 	var wg sync.WaitGroup
 	go func() {
 		wg.Add(1)
@@ -35,15 +53,16 @@ func StartServer(bind string) error {
 		server.Serve(sl)
 	}()
 
-	log.Println("Serving HTTP")
 	select {
-	case signal := <-stopChan:
+	case signal := <-s.StopChan:
 		log.Printf("Got signal:%v\n", signal)
 	}
-	log.Println("Stopping listener")
 	sl.Stop()
-	log.Println("Waiting on server")
 	wg.Wait()
 
 	return nil
+}
+
+func (s *Server) Stop() {
+	s.StopChan <- syscall.SIGINT
 }
