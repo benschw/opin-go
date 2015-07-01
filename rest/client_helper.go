@@ -99,6 +99,9 @@ func ProcessResponseEntity(r *http.Response, entity interface{}, expectedStatus 
 	return nil
 }
 func processResponse(r *http.Response, expectedStatus int) error {
+	if r == nil {
+		return errors.New("response is nil")
+	}
 	if r.StatusCode != expectedStatus {
 
 		switch r.StatusCode {
