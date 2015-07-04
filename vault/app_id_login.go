@@ -5,6 +5,7 @@ import (
 	"net/http"
 	"os"
 
+	"github.com/benschw/dns-clb-go/clb"
 	"github.com/benschw/opin-go/rest"
 	"github.com/hashicorp/vault/api"
 )
@@ -55,8 +56,14 @@ func NewAppIdClient(config *api.Config, appId string, userId string) (*api.Clien
 }
 
 func DefaultAppIdClient() (*api.Client, error) {
+	lb := clb.NewDefaultClb(clb.RoundRobin)
+	vaultAddr, err := lb.GetAddress("vault.service.consul")
+	if err != nil {
+		return nil, err
+	}
 
 	config := api.DefaultConfig()
+	config.Address = fmt.Sprintf("http://%s:%d", vaultAddr.Address, vaultAddr.Port)
 
 	appId := os.Getenv("VAULT_APP_ID")
 	if appId == "" {
