@@ -42,6 +42,7 @@ func NewDbProvider(table string, serviceAddress string) (*DynamicDbProvider, err
 
 	client, err := DefaultAppIdClient()
 	if err != nil {
+		log.Printf("problem building app id client: %s", err)
 		return nil, err
 	}
 	return &DynamicDbProvider{

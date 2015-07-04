@@ -2,6 +2,8 @@ package vault
 
 import (
 	"fmt"
+	"io/ioutil"
+	"log"
 	"net/http"
 	"os"
 
@@ -31,18 +33,27 @@ func ApiIdLogin(config *api.Config, appId string, userId string) (*LoginResponse
 	req := &LoginRequest{AppId: appId, UserId: userId}
 	var resp LoginResponse
 
+	log.Printf("%+v", req)
 	r, err := rest.MakeRequest("POST", fmt.Sprintf("%s/v1/auth/app-id/login", config.Address), req)
 	if err != nil {
+		log.Printf("Problem logging in: %s", err)
 		return nil, err
 	}
 	err = rest.ProcessResponseEntity(r, &resp, http.StatusOK)
-
+	if err != nil {
+		respBody, err := ioutil.ReadAll(r.Body)
+		if err != nil {
+			return nil, err
+		}
+		log.Print(string(respBody[:]))
+	}
 	return &resp, err
 }
 
 func NewAppIdClient(config *api.Config, appId string, userId string) (*api.Client, error) {
 	client, err := api.NewClient(config)
 	if err != nil {
+		log.Printf("Problem creating default client %s", err)
 		return client, err
 	}
 
@@ -59,6 +70,7 @@ func DefaultAppIdClient() (*api.Client, error) {
 	lb := clb.NewDefaultClb(clb.RoundRobin)
 	vaultAddr, err := lb.GetAddress("vault.service.consul")
 	if err != nil {
+		log.Printf("couldn't discover vault server address: %s", err)
 		return nil, err
 	}
 
