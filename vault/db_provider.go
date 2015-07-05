@@ -55,9 +55,7 @@ func NewDbProvider(table string, svcName string) (*DynamicDbProvider, error) {
 
 	go dbConnectionCreator(ch, lb, svcName, table)
 
-	return &DynamicDbProvider{
-		reqCh: ch,
-	}, nil
+	return &DynamicDbProvider{reqCh: ch}, nil
 }
 
 type connectionRequest struct {
@@ -127,20 +125,18 @@ func createDbConnection(lb clb.LoadBalancer, user string, pass string, table str
 }
 
 type DynamicDbProvider struct {
-	vault  *api.Client
-	table  string
-	svcAdd string
-	lb     clb.LoadBalancer
-	reqCh  chan connectionRequest
+	reqCh chan connectionRequest
 }
 
 func (p *DynamicDbProvider) Get() (*gorm.DB, error) {
-	ch := make(chan connectionResponse)
-	p.reqCh <- connectionRequest{Resp: ch}
+	req := connectionRequest{Resp: make(chan connectionResponse)}
+	p.reqCh <- req
+	resp := <-req.Resp
 
-	resp := <-ch
 	return &resp.Db, resp.Err
 }
 func (p *DynamicDbProvider) Close() {
-	p.reqCh <- connectionRequest{Exit: true}
+	req := connectionRequest{Exit: true, Resp: make(chan connectionResponse)}
+	p.reqCh <- req
+	<-req.Resp
 }
