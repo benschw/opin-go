@@ -43,14 +43,29 @@ func DefaultAppIdLoginConfig() (*AppIdLoginConfig, error) {
 }
 
 func ApiIdLogin(config *api.Config, req *AppIdLoginConfig) (*LoginResponse, error) {
-	var resp LoginResponse
+	addr := fmt.Sprintf("%s/v1/auth/app-id/login", config.Address)
 
-	r, err := rest.MakeRequest("POST", fmt.Sprintf("%s/v1/auth/app-id/login", config.Address), req)
+	return loginRequest(addr, req)
+}
+func loginRequest(addr string, req *AppIdLoginConfig) (*LoginResponse, error) {
+	var resp LoginResponse
+	log.Printf("Logging in at %s", addr)
+
+	r, err := rest.MakeRequest("POST", addr, req)
 	if err != nil {
 		return nil, fmt.Errorf("Problem logging in: %s", err)
 	}
 	err = rest.ProcessResponseEntity(r, &resp, http.StatusOK)
 	if err != nil {
+		if r.StatusCode == http.StatusTemporaryRedirect {
+			loc, err := r.Location()
+			if err != nil {
+				return nil, err
+			}
+			log.Print("Following Temporary Redirect")
+			return loginRequest(loc.String(), req)
+		}
+
 		respBody, err := ioutil.ReadAll(r.Body)
 		if err != nil {
 			return nil, err
