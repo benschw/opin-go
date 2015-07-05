@@ -63,7 +63,6 @@ func ApiIdLogin(config *api.Config, req *AppIdLoginConfig) (*LoginResponse, erro
 func NewAppIdClient(config *api.Config, loginConfig *AppIdLoginConfig) (*api.Client, error) {
 	client, err := api.NewClient(config)
 	if err != nil {
-		log.Printf("Problem creating default client %s", err)
 		return client, err
 	}
 

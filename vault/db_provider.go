@@ -3,6 +3,7 @@ package vault
 import (
 	"fmt"
 	"log"
+	"time"
 
 	"github.com/benschw/dns-clb-go/clb"
 	_ "github.com/go-sql-driver/mysql"
@@ -69,20 +70,22 @@ type connectionResponse struct {
 
 func dbConnectionCreator(reqCh chan connectionRequest, lb clb.LoadBalancer, svcName string, table string) {
 	var db *gorm.DB
-
+	var lastUpdated int64
+	var leaseDuration int64
 	for req := range reqCh {
+		now := time.Now().Unix()
 		resp := connectionResponse{}
 		if req.Exit {
 			req.Resp <- resp
 			return
 		}
-		if db == nil {
+		if db == nil || now-lastUpdated > leaseDuration {
 			vault, err := DefaultAppIdClient()
 			if err != nil {
 				log.Printf("problem building app id client: %s", err)
 				resp.Err = err
 			} else {
-				un, pw, err := getDbCreds(vault)
+				dur, un, pw, err := getDbCreds(vault)
 				if err != nil {
 					log.Printf("problem getting db creds: %s", err)
 					resp.Err = err
@@ -92,6 +95,11 @@ func dbConnectionCreator(reqCh chan connectionRequest, lb clb.LoadBalancer, svcN
 					if err != nil {
 						resp.Err = err
 					}
+					lastUpdated = now
+					if leaseDuration != int64(dur) {
+						leaseDuration = int64(dur)
+						log.Printf("db cred lease updated to %ds", leaseDuration)
+					}
 				}
 			}
 		}
@@ -99,20 +107,23 @@ func dbConnectionCreator(reqCh chan connectionRequest, lb clb.LoadBalancer, svcN
 		req.Resp <- resp
 	}
 }
-func getDbCreds(vault *api.Client) (string, string, error) {
+func getDbCreds(vault *api.Client) (int, string, string, error) {
 	sec, err := vault.Logical().Read("mysql/creds/todo")
 	if err != nil {
-		return "", "", err
+		return 0, "", "", err
 	}
+
+	dur := sec.LeaseDuration
+
 	un, ok := sec.Data["username"].(string)
 	if !ok {
-		return "", "", fmt.Errorf("mysql username not found")
+		return 0, "", "", fmt.Errorf("mysql username not found")
 	}
 	pw, ok := sec.Data["password"].(string)
 	if !ok {
-		return "", "", fmt.Errorf("mysql password not found")
+		return 0, "", "", fmt.Errorf("mysql password not found")
 	}
-	return un, pw, nil
+	return dur, un, pw, nil
 }
 func createDbConnection(lb clb.LoadBalancer, user string, pass string, table string, svcName string) (*gorm.DB, error) {
 	add, err := lb.GetAddress(svcName)
