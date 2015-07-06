@@ -2,7 +2,6 @@ package vault
 
 import (
 	"fmt"
-	"io/ioutil"
 	"log"
 	"net/http"
 	"os"
@@ -11,6 +10,9 @@ import (
 	"github.com/hashicorp/vault/api"
 )
 
+type Errors struct {
+	Errors []string `json:"errors"`
+}
 type AuthInfo struct {
 	ClientToken   string `json:"client_token"`
 	LeaseDuration int    `json:"lease_duration"`
@@ -64,13 +66,15 @@ func loginRequest(addr string, req *AppIdLoginConfig) (*LoginResponse, error) {
 			}
 			log.Print("Following Temporary Redirect")
 			return loginRequest(loc.String(), req)
-		}
+		} else {
 
-		respBody, err := ioutil.ReadAll(r.Body)
-		if err != nil {
-			return nil, err
+			var errors Errors
+			if err2 := rest.ForceProcessResponseEntity(r, errors); err2 == nil {
+				for e := range errors.Errors {
+					log.Print(e)
+				}
+			}
 		}
-		log.Print(string(respBody[:]))
 	}
 	return &resp, err
 }
