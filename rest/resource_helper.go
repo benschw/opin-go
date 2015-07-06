@@ -3,10 +3,11 @@ package rest
 import (
 	"encoding/json"
 	"fmt"
-	"github.com/gorilla/mux"
 	"log"
 	"net/http"
 	"strconv"
+
+	"github.com/gorilla/mux"
 )
 
 // Helpers
@@ -64,15 +65,17 @@ func SetCreatedResponse(res http.ResponseWriter, entity interface{}, location st
 }
 
 func SetOKResponse(res http.ResponseWriter, entity interface{}) error {
-	b, err := json.Marshal(entity)
-	if err != nil {
-		return err
-	}
-	body := string(b[:])
+	if entity != nil {
+		b, err := json.Marshal(entity)
+		if err != nil {
+			return err
+		}
+		body := string(b[:])
 
-	JsonResponse(res)
+		JsonResponse(res)
+		fmt.Fprint(res, body)
+	}
 	res.WriteHeader(http.StatusOK)
-	fmt.Fprint(res, body)
 	return nil
 }
 
