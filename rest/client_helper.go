@@ -86,7 +86,9 @@ func ProcessResponseEntity(r *http.Response, entity interface{}, expectedStatus 
 	if err := processResponse(r, expectedStatus); err != nil {
 		return err
 	}
-
+	return ForceProcessResponseEntity(r, entity)
+}
+func ForceProcessResponseEntity(r *http.Response, entity interface{}) error {
 	respBody, err := ioutil.ReadAll(r.Body)
 	if err != nil {
 		return err
