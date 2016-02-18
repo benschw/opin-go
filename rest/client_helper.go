@@ -21,7 +21,7 @@ var (
 )
 
 func NewRequestH(method string, url string, headers map[string]interface{}, entity interface{}) (*http.Response, error) {
-	req, err := buildRequest(method, url, headers, entity)
+	req, err := BuildRequest(method, url, headers, entity)
 	if err != nil {
 		return nil, err
 	}
@@ -30,14 +30,14 @@ func NewRequestH(method string, url string, headers map[string]interface{}, enti
 
 func MakeRequest(method string, url string, entity interface{}) (*http.Response, error) {
 	headers := map[string]interface{}{}
-	req, err := buildRequest(method, url, headers, entity)
+	req, err := BuildRequest(method, url, headers, entity)
 	if err != nil {
 		return nil, err
 	}
 	return http.DefaultClient.Do(req)
 }
 
-func buildRequest(method string, url string, headers map[string]interface{}, entity interface{}) (*http.Request, error) {
+func BuildRequest(method string, url string, headers map[string]interface{}, entity interface{}) (*http.Request, error) {
 	body, err := encodeEntity(entity)
 	if err != nil {
 		return nil, err
